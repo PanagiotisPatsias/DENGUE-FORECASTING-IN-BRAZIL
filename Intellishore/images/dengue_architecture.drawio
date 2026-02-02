@@ -1,0 +1,188 @@
+<mxfile host="app.diagrams.net" modified="2024-01-15T10:00:00.000Z" agent="Mozilla/5.0" version="22.1.0" type="device">
+  <diagram name="Dengue Forecasting Architecture" id="dengue-arch-001">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="1000" math="0" shadow="1">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- Title -->
+        <mxCell id="title" value="&lt;b&gt;Dengue Forecasting System - Architecture&lt;/b&gt;&lt;br&gt;ML Pipeline with MLflow Monitoring &amp;amp; Streamlit Dashboard" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=18;" vertex="1" parent="1">
+          <mxGeometry x="500" y="20" width="400" height="50" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== DATA LAYER ========== -->
+        <mxCell id="data-layer" value="Data Layer" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#dae8fc;strokeColor=#6c8ebf;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="100" width="180" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="csv1" value="&lt;b&gt;infodengue_capitals.csv&lt;/b&gt;&lt;br&gt;Dengue Cases Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="data-layer">
+          <mxGeometry y="30" width="180" height="55" as="geometry"/>
+        </mxCell>
+        <mxCell id="csv2" value="&lt;b&gt;sst_indices.csv&lt;/b&gt;&lt;br&gt;SST Climate Data" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;" vertex="1" parent="data-layer">
+          <mxGeometry y="95" width="180" height="55" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== CORE PIPELINE ========== -->
+        <mxCell id="core-pipeline" value="Core Pipeline - src/core/" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#fff2cc;strokeColor=#d6b656;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="100" width="480" height="100" as="geometry"/>
+        </mxCell>
+        <mxCell id="dataloader" value="&lt;b&gt;DataLoader&lt;/b&gt;&lt;br&gt;Load &amp;amp; Validate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="core-pipeline">
+          <mxGeometry y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="feature-eng" value="&lt;b&gt;FeatureEngineer&lt;/b&gt;&lt;br&gt;Lag, Rolling, Season" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="core-pipeline">
+          <mxGeometry x="120" y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="model-trainer" value="&lt;b&gt;ModelTrainer&lt;/b&gt;&lt;br&gt;GB, RF, AdaBoost" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="core-pipeline">
+          <mxGeometry x="240" y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="forecaster" value="&lt;b&gt;Forecaster&lt;/b&gt;&lt;br&gt;Future Predictions" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="core-pipeline">
+          <mxGeometry x="360" y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== MODEL MANAGEMENT ========== -->
+        <mxCell id="model-mgmt" value="Model Management" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#fff9c4;strokeColor=#d6b656;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="780" y="100" width="180" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="model-manager" value="&lt;b&gt;ModelManager&lt;/b&gt;&lt;br&gt;Save/Load, Versioning" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="model-mgmt">
+          <mxGeometry y="30" width="180" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="models-folder" value="&lt;b&gt;models/&lt;/b&gt;&lt;br&gt;baseline_model.pkl" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=10;fillColor=#ffffff;strokeColor=#d6b656;" vertex="1" parent="model-mgmt">
+          <mxGeometry x="40" y="80" width="100" height="45" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== MONITORING SYSTEM ========== -->
+        <mxCell id="monitoring" value="Monitoring System - src/monitoring/" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#e1d5e7;strokeColor=#9673a6;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="260" y="250" width="320" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="model-monitor" value="&lt;b&gt;ModelMonitor&lt;/b&gt;&lt;br&gt;Performance Tracking&lt;br&gt;Drift Detection (0.15)&lt;br&gt;MLflow Integration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="monitoring">
+          <mxGeometry y="30" width="155" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="dashboard-gen" value="&lt;b&gt;DashboardGenerator&lt;/b&gt;&lt;br&gt;HTML + Chart.js&lt;br&gt;Interactive Reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#9673a6;" vertex="1" parent="monitoring">
+          <mxGeometry x="160" y="30" width="155" height="80" as="geometry"/>
+        </mxCell>
+        <mxCell id="thresholds" value="drift_threshold: 0.15 | min R2: 0.30" style="text;html=1;strokeColor=#9673a6;fillColor=#e1d5e7;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="monitoring">
+          <mxGeometry y="115" width="320" height="20" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== MLFLOW ========== -->
+        <mxCell id="mlflow" value="MLflow Tracking" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#d5e8d4;strokeColor=#82b366;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="620" y="250" width="340" height="140" as="geometry"/>
+        </mxCell>
+        <mxCell id="mlflow-server" value="&lt;b&gt;MLflow Server&lt;/b&gt;&lt;br&gt;Port 5000&lt;br&gt;./mlruns/" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="mlflow">
+          <mxGeometry y="30" width="110" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="experiments" value="&lt;b&gt;Experiments&lt;/b&gt;&lt;br&gt;dengue_forecasting&lt;br&gt;drift_check_2025" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="mlflow">
+          <mxGeometry x="115" y="30" width="110" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="artifacts" value="&lt;b&gt;Artifacts&lt;/b&gt;&lt;br&gt;Models&lt;br&gt;Dashboards&lt;br&gt;Reports" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#82b366;" vertex="1" parent="mlflow">
+          <mxGeometry x="230" y="30" width="105" height="70" as="geometry"/>
+        </mxCell>
+        <mxCell id="metrics-tags" value="Metrics: R2, MAE, RMSE, drift_detected | Tags: DRIFT_STATUS, severity" style="text;html=1;strokeColor=#82b366;fillColor=#d5e8d4;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=9;" vertex="1" parent="mlflow">
+          <mxGeometry y="105" width="340" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== AUTOMATION ========== -->
+        <mxCell id="automation" value="Automation Layer" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#e0f2f1;strokeColor=#00695c;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="280" width="180" height="110" as="geometry"/>
+        </mxCell>
+        <mxCell id="scheduler" value="&lt;b&gt;drift_scheduler.py&lt;/b&gt;&lt;br&gt;Daily at 8:00 AM" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#00695c;" vertex="1" parent="automation">
+          <mxGeometry y="30" width="180" height="35" as="geometry"/>
+        </mxCell>
+        <mxCell id="run-scripts" value="&lt;b&gt;run_app.ps1/sh&lt;/b&gt;&lt;br&gt;Start MLflow + Streamlit" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#00695c;" vertex="1" parent="automation">
+          <mxGeometry y="70" width="180" height="35" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== STREAMLIT UI ========== -->
+        <mxCell id="streamlit" value="Streamlit Dashboard - Port 8501" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#fce4ec;strokeColor=#c2185b;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="440" width="520" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="page-dashboard" value="&lt;b&gt;Dashboard&lt;/b&gt;&lt;br&gt;Drift Alerts&lt;br&gt;Model Status" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c2185b;" vertex="1" parent="streamlit">
+          <mxGeometry y="30" width="125" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="page-training" value="&lt;b&gt;Training&lt;/b&gt;&lt;br&gt;Model Evaluation&lt;br&gt;Metrics Display" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c2185b;" vertex="1" parent="streamlit">
+          <mxGeometry x="130" y="30" width="125" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="page-forecast" value="&lt;b&gt;Forecast&lt;/b&gt;&lt;br&gt;2026 Predictions&lt;br&gt;SST Integration" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c2185b;" vertex="1" parent="streamlit">
+          <mxGeometry x="260" y="30" width="125" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="page-monitoring" value="&lt;b&gt;Monitoring&lt;/b&gt;&lt;br&gt;MLflow Runs&lt;br&gt;History View" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#c2185b;" vertex="1" parent="streamlit">
+          <mxGeometry x="390" y="30" width="125" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="alerts" value="Real-time Drift Alerts: Red (CRITICAL) | Yellow (WARNING) | Green (OK)" style="text;html=1;strokeColor=#c2185b;fillColor=#ffebee;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="streamlit">
+          <mxGeometry y="95" width="520" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== DEPLOYMENT ========== -->
+        <mxCell id="deployment" value="Deployment Options" style="swimlane;fontStyle=1;childLayout=stackLayout;horizontal=1;startSize=30;horizontalStack=1;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;fillColor=#eceff1;strokeColor=#546e7a;rounded=1;shadow=1;" vertex="1" parent="1">
+          <mxGeometry x="600" y="440" width="360" height="130" as="geometry"/>
+        </mxCell>
+        <mxCell id="local" value="&lt;b&gt;Local&lt;/b&gt;&lt;br&gt;Python venv&lt;br&gt;run_app scripts" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#546e7a;" vertex="1" parent="deployment">
+          <mxGeometry y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="docker" value="&lt;b&gt;Docker&lt;/b&gt;&lt;br&gt;docker-compose&lt;br&gt;Multi-service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2196f3;" vertex="1" parent="deployment">
+          <mxGeometry x="120" y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="gcp" value="&lt;b&gt;GCP&lt;/b&gt;&lt;br&gt;Cloud Run&lt;br&gt;2Gi / 2CPU" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#4285f4;" vertex="1" parent="deployment">
+          <mxGeometry x="240" y="30" width="115" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="tech-stack" value="scikit-learn | MLflow 2.0+ | Streamlit 1.28+ | Chart.js | Plotly" style="text;html=1;strokeColor=#546e7a;fillColor=#e3f2fd;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=1;fontSize=10;" vertex="1" parent="deployment">
+          <mxGeometry y="95" width="360" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- ========== ARROWS / CONNECTORS ========== -->
+        <!-- Data to Core -->
+        <mxCell id="arrow1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#6c8ebf;endArrow=classic;endFill=1;" edge="1" parent="1" source="data-layer" target="core-pipeline">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="label1" value="CSV" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#6c8ebf;" vertex="1" connectable="0" parent="arrow1">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+        <!-- Core to Model Management -->
+        <mxCell id="arrow2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#d6b656;endArrow=classic;endFill=1;" edge="1" parent="1" source="core-pipeline" target="model-mgmt">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="label2" value="Save" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#d6b656;" vertex="1" connectable="0" parent="arrow2">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+        <!-- Core to Monitoring -->
+        <mxCell id="arrow3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#9673a6;endArrow=classic;endFill=1;" edge="1" parent="1" source="core-pipeline" target="monitoring">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="label3" value="Log" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#9673a6;" vertex="1" connectable="0" parent="arrow3">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+        <!-- Monitoring to MLflow -->
+        <mxCell id="arrow4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#82b366;endArrow=classic;endFill=1;" edge="1" parent="1" source="monitoring" target="mlflow">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="label4" value="Track" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#82b366;" vertex="1" connectable="0" parent="arrow4">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+        <!-- Automation to Monitoring -->
+        <mxCell id="arrow5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#00695c;endArrow=classic;endFill=1;" edge="1" parent="1" source="automation" target="monitoring">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="label5" value="Trigger" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#00695c;" vertex="1" connectable="0" parent="arrow5">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+        <!-- MLflow to Streamlit -->
+        <mxCell id="arrow6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;strokeColor=#82b366;endArrow=classic;endFill=1;dashed=1;" edge="1" parent="1" source="mlflow" target="streamlit">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="790" y="410"/>
+              <mxPoint x="300" y="410"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="label6" value="Query" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=10;fontColor=#82b366;" vertex="1" connectable="0" parent="arrow6">
+          <mxGeometry x="-0.2" relative="1" as="geometry"><mxPoint as="offset"/></mxGeometry>
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

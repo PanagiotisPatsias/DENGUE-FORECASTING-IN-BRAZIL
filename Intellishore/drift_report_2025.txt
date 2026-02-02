@@ -1,0 +1,45 @@
+
+================================================================================
+[ALERT] MODEL DRIFT DETECTION REPORT - CRITICAL
+================================================================================
+
+Timestamp: 2026-02-02 18:34:13
+Model: GradientBoosting
+Test Year: 2025
+
+--------------------------------------------------------------------------------
+BASELINE COMPARISON
+--------------------------------------------------------------------------------
+
+Baseline (Year 2023):
+  R² Score:     0.6005
+  MAE:          14,489
+  RMSE:         16,298
+
+Current (Year 2025):
+  R² Score:    -0.1488
+  MAE:          59,719
+  RMSE:         69,297
+
+Changes from Baseline:
+  ΔR²:         -0.7492
+  ΔMAE:         45,230
+  ΔRMSE:        53,000
+
+--------------------------------------------------------------------------------
+DRIFT DETECTION RESULTS
+--------------------------------------------------------------------------------
+
+[ALERT] DRIFT DETECTED - CRITICAL
+
+Drift Reasons:
+  1. R² degradation: 0.7492 (baseline: 0.6005 → current: -0.1488)
+  2. R² below threshold: -0.1488 < 0.3
+  3. MAE increased by 312.2% (baseline: 14,489 → current: 59,719)
+
+[ALERT] ACTION REQUIRED:
+  • Retrain model IMMEDIATELY
+  • Investigate root causes
+  • Update baseline after retraining
+
+================================================================================

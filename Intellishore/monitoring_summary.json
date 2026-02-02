@@ -1,0 +1,51 @@
+{
+  "experiment_name": "dengue_forecasting",
+  "tracking_uri": "./mlruns",
+  "drift_threshold": 0.15,
+  "performance_threshold": 0.3,
+  "baseline_metrics": {
+    "metrics": {
+      "r2": 0.6004886437275962,
+      "mae": 14489.101924795106,
+      "rmse": 16297.53417624526
+    },
+    "model_name": "RandomForest",
+    "test_year": 2023,
+    "timestamp": "2026-02-02T18:34:05.133233"
+  },
+  "metrics_history": [
+    {
+      "timestamp": "2026-02-02T18:34:13.363531",
+      "model_name": "GradientBoosting",
+      "test_year": 2025,
+      "metrics": {
+        "r2": -0.14875695825628554,
+        "mae": 59719.128161243854,
+        "rmse": 69297.48995295426
+      },
+      "drift_detected": true,
+      "drift_reasons": [
+        "R\u00b2 degradation: 0.7492 (baseline: 0.6005 \u2192 current: -0.1488)",
+        "R\u00b2 below threshold: -0.1488 < 0.3",
+        "MAE increased by 312.2% (baseline: 14,489 \u2192 current: 59,719)"
+      ]
+    },
+    {
+      "timestamp": "2026-02-02T18:34:13.402603",
+      "model_name": "GradientBoosting",
+      "test_year": 2025,
+      "metrics": {
+        "r2": -0.14875695825628554,
+        "mae": 59719.128161243854,
+        "rmse": 69297.48995295426
+      },
+      "drift_detected": true,
+      "drift_reasons": [
+        "R\u00b2 degradation: 0.7492 (baseline: 0.6005 \u2192 current: -0.1488)",
+        "R\u00b2 below threshold: -0.1488 < 0.3",
+        "MAE increased by 312.2% (baseline: 14,489 \u2192 current: 59,719)"
+      ]
+    }
+  ],
+  "export_timestamp": "2026-02-02T18:34:14.123420"
+}

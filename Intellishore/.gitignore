@@ -1,0 +1,85 @@
+# python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# models (optional - uncomment if you don't want to track trained models)
+# models/*.pkl
+# models/*.json
+
+# mlflow
+mlruns/
+mlartifacts/
+
+# jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints
+*.ipynb
+!README.ipynb
+
+# ide
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# os
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# outputs
+*.log
+
+# data (if large)
+# uncomment if data files are too large for git
+# data/*.csv
+
+# docker
+.dockerignore
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
+
+# mypy
+.mypy_cache/
+.dmypy.json
+
+# temporary files
+*.tmp
+*.bak
+*.swp
+
+# old documentation (keep only README.md)
+*.md
+!README.md
+
+dmypy.json

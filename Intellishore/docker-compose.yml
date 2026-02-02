@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mlflow:
+    build: .
+    container_name: dengue-mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./models:/app/models
+    environment:
+      - MLFLOW_TRACKING_URI=/app/mlruns
+    command: mlflow ui --host 0.0.0.0 --port 5000 --backend-store-uri file:///app/mlruns
+    networks:
+      - dengue-network
+    restart: unless-stopped
+
+  streamlit:
+    build: .
+    container_name: dengue-streamlit
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./mlruns:/app/mlruns
+      - ./models:/app/models
+      - ./data:/app/data
+    environment:
+      - MLFLOW_TRACKING_URI=/app/mlruns
+    depends_on:
+      - mlflow
+    networks:
+      - dengue-network
+    restart: unless-stopped
+    command: streamlit run app.py --server.port=8501 --server.address=0.0.0.0
+
+networks:
+  dengue-network:
+    driver: bridge
+
+volumes:
+  mlruns:
+  models:

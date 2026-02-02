@@ -294,6 +294,9 @@ def main():
                 )
                 st.dataframe(forecast_df, use_container_width=True)
 
+                st.subheader("MLflow")
+                st.link_button("Open MLflow", "http://localhost:5000")
+
                 metadata = {
                     "model_name": best_2023["name"],
                     "features": best_2023["valid_features"],

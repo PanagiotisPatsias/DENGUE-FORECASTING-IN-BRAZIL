@@ -35,7 +35,7 @@ jobs:
         run: gcloud auth configure-docker ${REGION}-docker.pkg.dev
 
       - name: Build
-        run: docker build -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA} .
+        run: docker build -f Intellishore/Dockerfile -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA} Intellishore
 
       - name: Push
         run: docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA}

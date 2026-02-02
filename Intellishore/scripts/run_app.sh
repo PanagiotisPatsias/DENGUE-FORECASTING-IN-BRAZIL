@@ -1,7 +1,7 @@
 #!/bin/bash
 # launch mlflow ui and streamlit app together
 
-echo " Starting Dengue Forecasting System..."
+echo " Starting Dengue Forecasting System...."
 echo ""
 
 # check if model exists

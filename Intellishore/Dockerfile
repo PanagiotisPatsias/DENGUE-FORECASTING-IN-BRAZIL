@@ -47,12 +47,14 @@ ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV MLFLOW_TRACKING_URI=/app/mlruns
 
-# Expose ports for Streamlit and MLflow
-EXPOSE 8501 5000
+# Cloud Run listens on $PORT (default 8080)
+ENV PORT=8080
+EXPOSE 8080
 
 # Health check
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8501/_stcore/health')" || exit 1
+    CMD python -c "import os,requests; requests.get(f\"http://localhost:{os.environ.get('PORT','8080')}/_stcore/health\")" || exit 1
 
-# Default command runs Streamlit
-CMD ["streamlit", "run", "app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+# Default command runs Streamlit on Cloud Run port
+CMD ["sh", "-c", "streamlit run app.py --server.port=${PORT:-8080} --server.address=0.0.0.0"]

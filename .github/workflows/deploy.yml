@@ -37,6 +37,9 @@ jobs:
 
       - name: Configure Docker auth
         run: gcloud auth configure-docker ${REGION}-docker.pkg.dev
+      
+      - name: Enable Cloud Scheduler API
+        run: gcloud services enable cloudscheduler.googleapis.com
 
       - name: Build
         run: docker build -f Intellishore/Dockerfile -t ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA} Intellishore

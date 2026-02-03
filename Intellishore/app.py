@@ -12,6 +12,7 @@ import os
 import io
 import tempfile
 from pathlib import Path
+import pickle
 
 # add src to path
 sys.path.insert(0, str(Path(__file__).parent))
@@ -78,6 +79,15 @@ def _read_uploaded_csv(uploaded):
     if isinstance(uploaded, (bytes, bytearray)):
         return pd.read_csv(io.BytesIO(uploaded))
     return pd.read_csv(uploaded)
+
+
+def _load_uploaded_pickle(uploaded):
+    if uploaded is None:
+        raise ValueError("Missing uploaded .pkl file")
+    try:
+        return pickle.load(uploaded)
+    except Exception as exc:
+        raise ValueError(f"Could not read uploaded .pkl: {exc}") from exc
 
 
 def prepare_training_data_from_uploads(dengue_file, sst_file):
@@ -280,6 +290,94 @@ def main():
     st.markdown('<div class="main-header">Dengue Forecasting</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtext">Upload a CSV, run prediction, and download a report.</div>', unsafe_allow_html=True)
 
+    is_cloud = os.getenv("CLOUD_MODE", "").lower() in ("1", "true", "yes")
+    is_cloud = is_cloud or os.getenv("STREAMLIT_CLOUD", "").lower() in ("1", "true", "yes")
+
+    if is_cloud:
+        st.markdown("<div class='panel'>", unsafe_allow_html=True)
+        st.subheader("Cloud Mode: Predict Only")
+        st.caption("Upload 2 .pkl files and run prediction. No training is executed in cloud mode.")
+
+        uploaded_model = st.file_uploader("Upload model .pkl", type=["pkl"], key="cloud_model_upload")
+        uploaded_meta = st.file_uploader("Upload metadata .pkl (optional)", type=["pkl"], key="cloud_meta_upload")
+
+        if uploaded_model is None:
+            st.info("Upload the model .pkl to proceed.")
+            st.markdown("</div>", unsafe_allow_html=True)
+            return
+
+        if st.button("Run Prediction", type="primary"):
+            with st.spinner("Running prediction..."):
+                try:
+                    model = _load_uploaded_pickle(uploaded_model)
+                    metadata = _load_uploaded_pickle(uploaded_meta) if uploaded_meta else {}
+
+                    df_base = load_training_data()
+                    feature_engineer = FeatureEngineer()
+                    df_feat, feature_cols = feature_engineer.create_features(df_base)
+
+                    forecaster = Forecaster(feature_engineer)
+                    forecast_raw, valid_features = forecaster.forecast_with_fitted_model(
+                        df_feat,
+                        feature_cols,
+                        model,
+                        forecast_year=2026,
+                        train_max_year=2025,
+                        exclude_years=[2024],
+                        feature_subset=metadata.get("features"),
+                    )
+
+                    st.success("[OK] Forecast completed.")
+                    forecast_df = forecast_raw.rename(
+                        columns={
+                            "year_quarter": "Quarter",
+                            "predicted_casos_est": "Forecast",
+                        }
+                    )
+                    st.dataframe(forecast_df, use_container_width=True)
+
+                    report_text = build_report_text(
+                        {
+                            "model_name": metadata.get("model_name", "uploaded_model"),
+                            "features": valid_features,
+                            "metrics": metadata.get("metrics", {}),
+                            "test_year": metadata.get("test_year", "N/A"),
+                            "train_years": metadata.get("train_years", []),
+                            "num_features": len(valid_features),
+                        },
+                        df_base,
+                        forecast_df["Forecast"].tolist(),
+                        metrics=None,
+                        pipeline_summary={
+                            "best_2023_name": metadata.get("model_name", "uploaded_model"),
+                            "best_2023_r2": metadata.get("metrics", {}).get("r2", 0.0),
+                            "best_2023_mae": metadata.get("metrics", {}).get("mae", 0.0),
+                            "best_2025_name": "N/A",
+                            "best_2025_r2": 0.0,
+                            "best_2025_mae": 0.0,
+                            "forecast_2026": forecast_df["Forecast"].tolist(),
+                        },
+                    )
+
+                    st.subheader("Download")
+                    st.download_button(
+                        "Download forecast_2026.csv",
+                        forecast_df.to_csv(index=False),
+                        "forecast_2026.csv",
+                        "text/csv",
+                    )
+                    st.download_button(
+                        "Download report.txt",
+                        report_text,
+                        f"prediction_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+                        "text/plain",
+                    )
+                except Exception as exc:
+                    st.error(f"[ERROR] Prediction failed: {exc}")
+
+        st.markdown("</div>", unsafe_allow_html=True)
+        return
+
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.subheader("0) Training Plan")
     st.caption("This follows src/main.py: evaluate 2023, evaluate 2025 (exclude 2024), forecast 2026.")
@@ -332,9 +430,6 @@ def main():
 
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.subheader("2) Train + Forecast (Full Pipeline)")
-
-    is_cloud = os.getenv("CLOUD_MODE", "").lower() in ("1", "true", "yes")
-    is_cloud = is_cloud or os.getenv("STREAMLIT_CLOUD", "").lower() in ("1", "true", "yes")
 
     predict_only = False
     if use_bundled:

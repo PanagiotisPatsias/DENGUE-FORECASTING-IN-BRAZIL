@@ -254,6 +254,23 @@ def build_report_text(metadata, df_in, predictions, metrics=None, pipeline_summa
     return "\n".join(report_lines)
 
 
+def apply_fast_grid_settings(enable: bool) -> None:
+    """Shrink grid + CV splits for faster cloud runs."""
+    if not enable:
+        return
+    Config.TSCV_SPLITS = 2
+    trimmed = {}
+    for model_name, grid in Config.PARAM_GRIDS.items():
+        trimmed_grid = {}
+        for param_name, values in grid.items():
+            if isinstance(values, (list, tuple)) and values:
+                trimmed_grid[param_name] = [values[0]]
+            else:
+                trimmed_grid[param_name] = values
+        trimmed[model_name] = trimmed_grid
+    Config.PARAM_GRIDS = trimmed
+
+
 def main():
     st.markdown('<div class="main-header">Dengue Forecasting</div>', unsafe_allow_html=True)
     st.markdown('<div class="subtext">Upload a CSV, run prediction, and download a report.</div>', unsafe_allow_html=True)
@@ -300,6 +317,12 @@ def main():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.subheader("2) Train + Forecast (Full Pipeline)")
 
+    fast_mode = st.checkbox(
+        "Fast mode for cloud (smaller grid + 2 CV splits)",
+        value=True,
+        help="Reduces grid search size so Streamlit Cloud doesn't restart the session.",
+    )
+
     log_to_mlflow = st.checkbox(
         "Log results to MLflow",
         value=True,
@@ -309,6 +332,7 @@ def main():
     if st.button("Run Full Pipeline + Forecast", type="primary"):
         with st.spinner("Running training pipeline and generating forecast..."):
             try:
+                apply_fast_grid_settings(fast_mode)
                 df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
                 pipeline = run_full_pipeline(df_base=df_base)
 

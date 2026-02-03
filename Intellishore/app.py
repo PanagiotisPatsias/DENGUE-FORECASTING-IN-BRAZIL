@@ -263,7 +263,7 @@ def main():
         st.stop()
 
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
-                st.subheader("2) Train + Forecast (Full Pipeline)")
+    st.subheader("2) Train + Forecast (Full Pipeline)")
 
     log_to_mlflow = st.checkbox(
         "Log results to MLflow",

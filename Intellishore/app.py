@@ -518,12 +518,13 @@ def main():
                     )
                     st.dataframe(forecast_df, use_container_width=True)
 
-                    st.subheader("MLflow")
-                    mlflow_url = os.getenv(
-                        "MLFLOW_UI_URL",
-                        "http://localhost:5000",
-                    )
-                    st.link_button("Open MLflow", mlflow_url)
+                    if not is_cloud:
+                        st.subheader("MLflow")
+                        mlflow_url = os.getenv(
+                            "MLFLOW_UI_URL",
+                            "http://localhost:5000",
+                        )
+                        st.link_button("Open MLflow", mlflow_url)
 
                     if log_to_mlflow:
                         try:

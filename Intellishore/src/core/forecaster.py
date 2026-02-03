@@ -244,6 +244,68 @@ class Forecaster:
         )
         
         return forecast, fitted_model, valid_features
+
+    def forecast_with_fitted_model(
+        self,
+        df: pd.DataFrame,
+        feature_cols: List[str],
+        fitted_model: Any,
+        forecast_year: int,
+        train_max_year: int,
+        exclude_years: List[int] = None,
+        feature_subset: List[str] = None
+    ) -> Tuple[pd.DataFrame, List[str]]:
+        """
+        generate forecast using an already-fitted model (no retraining).
+        
+        args:
+            df: full historical dataframe
+            feature_cols: list of feature column names
+            fitted_model: pre-trained model
+            forecast_year: year to forecast
+            train_max_year: maximum year to include for stats
+            exclude_years: optional years to exclude
+            feature_subset: optional fixed feature list (e.g., from metadata)
+        
+        returns:
+            tuple of (forecast dataframe, valid features)
+        """
+        # prepare data for stats/medians
+        train_df = self.prepare_training_data(
+            df, train_max_year, exclude_years
+        )
+        train_df_feat, _ = self.feature_engineer.create_features(train_df)
+        train_df_feat = train_df_feat.dropna(subset=['casos_est']).copy()
+        
+        base_features = feature_subset or feature_cols
+        valid_features = [c for c in base_features if c in train_df_feat.columns]
+        
+        X_train = train_df_feat[valid_features].copy()
+        all_nan_cols = [c for c in valid_features if X_train[c].isna().all()]
+        valid_features = [c for c in valid_features if c not in all_nan_cols]
+        X_train = train_df_feat[valid_features].copy()
+        
+        # drop rows with nans for median computation
+        mask = ~X_train.isna().any(axis=1)
+        X_train = X_train.loc[mask]
+        
+        # create future quarters
+        future_df = self.create_future_quarters(df, forecast_year)
+        
+        # combine historical and future data
+        extended = pd.concat([df.copy(), future_df], ignore_index=True)
+        extended = extended.sort_values(['year', 'quarter']).reset_index(drop=True)
+        
+        # compute training medians for imputation
+        train_medians = X_train.median(numeric_only=True)
+        
+        # perform recursive forecast
+        forecast = self.recursive_forecast(
+            fitted_model, extended, forecast_year,
+            valid_features, train_medians
+        )
+        
+        return forecast, valid_features
     
     def print_forecast(self, forecast: pd.DataFrame, year: int) -> None:
         """

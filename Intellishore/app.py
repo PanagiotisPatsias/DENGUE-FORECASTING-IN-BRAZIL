@@ -334,6 +334,14 @@ def main():
         help="Reduces grid search size so Streamlit Cloud doesn't restart the session.",
     )
 
+    predict_only = False
+    if use_bundled:
+        predict_only = st.checkbox(
+            "Predict-only mode (use saved baseline model)",
+            value=True,
+            help="Skips training/validation in the cloud and only runs the forecast.",
+        )
+
     log_to_mlflow = st.checkbox(
         "Log results to MLflow",
         value=True,
@@ -348,153 +356,212 @@ def main():
                     df_base = load_training_data()
                 else:
                     df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
-                pipeline = run_full_pipeline(df_base=df_base)
+                if predict_only:
+                    model_manager = ModelManager()
+                    loaded = model_manager.load_baseline_model()
+                    if not loaded:
+                        st.error("[ERROR] No baseline model found. Train locally to create baseline_model.pkl.")
+                        return
+                    baseline_model, baseline_meta = loaded
 
-                results_2023 = pipeline["results_2023"]
-                results_2025 = pipeline["results_2025"]
-                best_2023 = pipeline["best_2023"]
-                best_2025 = pipeline["best_2025"]
+                    feature_engineer = FeatureEngineer()
+                    df_feat, feature_cols = feature_engineer.create_features(df_base)
+                    forecaster = Forecaster(feature_engineer)
 
-                st.success("[OK] Training + forecast completed.")
+                    forecast_raw, valid_features = forecaster.forecast_with_fitted_model(
+                        df_feat,
+                        feature_cols,
+                        baseline_model,
+                        forecast_year=2026,
+                        train_max_year=2025,
+                        exclude_years=[2024],
+                        feature_subset=baseline_meta.get("features"),
+                    )
 
-                st.subheader("Training Evaluation (2023)")
-                col1, col2, col3 = st.columns(3)
-                col1.metric("R2", f"{best_2023['res']['r2']:.4f}")
-                col2.metric("MAE", f"{best_2023['res']['mae']:,.0f}")
-                col3.metric("RMSE", f"{best_2023['res']['rmse']:,.0f}")
+                    st.success("[OK] Forecast completed (predict-only).")
 
-                st.subheader("Training Evaluation (2025)")
-                col1, col2, col3 = st.columns(3)
-                col1.metric("R2", f"{best_2025['res']['r2']:.4f}")
-                col2.metric("MAE", f"{best_2025['res']['mae']:,.0f}")
-                col3.metric("RMSE", f"{best_2025['res']['rmse']:,.0f}")
+                    st.subheader("Forecast 2026")
+                    forecast_vals = forecast_raw["predicted_casos_est"].tolist()
+                    forecast_df = forecast_raw.rename(
+                        columns={
+                            "year_quarter": "Quarter",
+                            "predicted_casos_est": "Forecast",
+                        }
+                    )
+                    st.dataframe(forecast_df, use_container_width=True)
 
-                st.subheader("Forecast 2026")
-                forecast_raw = pipeline["forecast_2026"]["values"]
-                forecast_vals = forecast_raw["predicted_casos_est"].tolist()
-                forecast_df = forecast_raw.rename(
-                    columns={
-                        "year_quarter": "Quarter",
-                        "predicted_casos_est": "Forecast",
+                    metadata = {
+                        "model_name": baseline_meta.get("model_name", "baseline_model"),
+                        "features": valid_features,
+                        "metrics": baseline_meta.get("metrics", {}),
+                        "test_year": baseline_meta.get("test_year", "N/A"),
+                        "train_years": baseline_meta.get("train_years", []),
+                        "num_features": len(valid_features),
                     }
-                )
-                st.dataframe(forecast_df, use_container_width=True)
 
-                st.subheader("MLflow")
-                mlflow_url = os.getenv(
-                    "MLFLOW_UI_URL",
-                    "http://localhost:5000",
-                )
-                st.link_button("Open MLflow", mlflow_url)
+                    report_text = build_report_text(
+                        metadata,
+                        df_base,
+                        forecast_vals,
+                        metrics=None,
+                        pipeline_summary={
+                            "best_2023_name": metadata["model_name"],
+                            "best_2023_r2": metadata.get("metrics", {}).get("r2", 0.0),
+                            "best_2023_mae": metadata.get("metrics", {}).get("mae", 0.0),
+                            "best_2025_name": "N/A",
+                            "best_2025_r2": 0.0,
+                            "best_2025_mae": 0.0,
+                            "forecast_2026": forecast_vals,
+                        },
+                    )
+                else:
+                    pipeline = run_full_pipeline(df_base=df_base)
 
-                if log_to_mlflow:
-                    try:
-                        monitor = ModelMonitor(experiment_name="dengue_forecasting")
-                        st.caption(f"MLflow tracking URI: `{monitor.tracking_uri}`")
+                    results_2023 = pipeline["results_2023"]
+                    results_2025 = pipeline["results_2025"]
+                    best_2023 = pipeline["best_2023"]
+                    best_2025 = pipeline["best_2025"]
 
-                        def _params_for(model_name: str, model_res: dict):
-                            return model_res.get(
-                                "best_params",
-                                Config.RANDOM_FOREST_PARAMS if model_name == "RandomForest"
-                                else Config.GRADIENT_BOOSTING_PARAMS if model_name == "GradientBoosting"
-                                else Config.ADABOOST_PARAMS if model_name == "AdaBoost"
-                                else Config.PARAM_GRIDS.get("XGBoost", {}),
-                            )
+                    st.success("[OK] Training + forecast completed.")
 
-                        logged = 0
+                    st.subheader("Training Evaluation (2023)")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("R2", f"{best_2023['res']['r2']:.4f}")
+                    col2.metric("MAE", f"{best_2023['res']['mae']:,.0f}")
+                    col3.metric("RMSE", f"{best_2023['res']['rmse']:,.0f}")
 
-                        for model_name, model_res in results_2023.items():
+                    st.subheader("Training Evaluation (2025)")
+                    col1, col2, col3 = st.columns(3)
+                    col1.metric("R2", f"{best_2025['res']['r2']:.4f}")
+                    col2.metric("MAE", f"{best_2025['res']['mae']:,.0f}")
+                    col3.metric("RMSE", f"{best_2025['res']['rmse']:,.0f}")
+
+                    st.subheader("Forecast 2026")
+                    forecast_raw = pipeline["forecast_2026"]["values"]
+                    forecast_vals = forecast_raw["predicted_casos_est"].tolist()
+                    forecast_df = forecast_raw.rename(
+                        columns={
+                            "year_quarter": "Quarter",
+                            "predicted_casos_est": "Forecast",
+                        }
+                    )
+                    st.dataframe(forecast_df, use_container_width=True)
+
+                    st.subheader("MLflow")
+                    mlflow_url = os.getenv(
+                        "MLFLOW_UI_URL",
+                        "http://localhost:5000",
+                    )
+                    st.link_button("Open MLflow", mlflow_url)
+
+                    if log_to_mlflow:
+                        try:
+                            monitor = ModelMonitor(experiment_name="dengue_forecasting")
+                            st.caption(f"MLflow tracking URI: `{monitor.tracking_uri}`")
+
+                            def _params_for(model_name: str, model_res: dict):
+                                return model_res.get(
+                                    "best_params",
+                                    Config.RANDOM_FOREST_PARAMS if model_name == "RandomForest"
+                                    else Config.GRADIENT_BOOSTING_PARAMS if model_name == "GradientBoosting"
+                                    else Config.ADABOOST_PARAMS if model_name == "AdaBoost"
+                                    else {},
+                                )
+
+                            logged = 0
+
+                            for model_name, model_res in results_2023.items():
+                                try:
+                                    metrics = {
+                                        "r2": model_res["r2"],
+                                        "mae": model_res["mae"],
+                                        "rmse": model_res["rmse"],
+                                    }
+                                    if "val_mae" in model_res:
+                                        metrics["val_mae"] = model_res["val_mae"]
+
+                                    monitor.log_training_run(
+                                        model=model_res["model"],
+                                        model_name=model_name,
+                                        params=_params_for(model_name, model_res),
+                                        metrics=metrics,
+                                        features=best_2023["valid_features"],
+                                        train_year_range=(2010, 2022),
+                                        test_year=2023,
+                                    )
+                                    logged += 1
+                                except Exception as exc:
+                                    st.warning(f"[WARNING] MLflow log failed for {model_name} 2023: {exc}")
+
+                            for model_name, model_res in results_2025.items():
+                                try:
+                                    metrics = {
+                                        "r2": model_res["r2"],
+                                        "mae": model_res["mae"],
+                                        "rmse": model_res["rmse"],
+                                    }
+                                    if "val_mae" in model_res:
+                                        metrics["val_mae"] = model_res["val_mae"]
+
+                                    monitor.log_training_run(
+                                        model=model_res["model"],
+                                        model_name=model_name,
+                                        params=_params_for(model_name, model_res),
+                                        metrics=metrics,
+                                        features=best_2025["valid_features"],
+                                        train_year_range=(2010, 2024),
+                                        test_year=2025,
+                                        artifacts={"excluded_years": [2024]},
+                                    )
+                                    logged += 1
+                                except Exception as exc:
+                                    st.warning(f"[WARNING] MLflow log failed for {model_name} 2025: {exc}")
+
                             try:
-                                metrics = {
-                                    "r2": model_res["r2"],
-                                    "mae": model_res["mae"],
-                                    "rmse": model_res["rmse"],
-                                }
-                                if "val_mae" in model_res:
-                                    metrics["val_mae"] = model_res["val_mae"]
-
-                                monitor.log_training_run(
-                                    model=model_res["model"],
-                                    model_name=model_name,
-                                    params=_params_for(model_name, model_res),
-                                    metrics=metrics,
-                                    features=best_2023["valid_features"],
-                                    train_year_range=(2010, 2022),
+                                monitor.set_baseline(
+                                    metrics={
+                                        "r2": best_2023["res"]["r2"],
+                                        "mae": best_2023["res"]["mae"],
+                                        "rmse": best_2023["res"]["rmse"],
+                                    },
+                                    model_name=best_2023["name"],
                                     test_year=2023,
                                 )
-                                logged += 1
                             except Exception as exc:
-                                st.warning(f"[WARNING] MLflow log failed for {model_name} 2023: {exc}")
+                                st.warning(f"[WARNING] MLflow baseline set failed: {exc}")
 
-                        for model_name, model_res in results_2025.items():
-                            try:
-                                metrics = {
-                                    "r2": model_res["r2"],
-                                    "mae": model_res["mae"],
-                                    "rmse": model_res["rmse"],
-                                }
-                                if "val_mae" in model_res:
-                                    metrics["val_mae"] = model_res["val_mae"]
-
-                                monitor.log_training_run(
-                                    model=model_res["model"],
-                                    model_name=model_name,
-                                    params=_params_for(model_name, model_res),
-                                    metrics=metrics,
-                                    features=best_2025["valid_features"],
-                                    train_year_range=(2010, 2024),
-                                    test_year=2025,
-                                    artifacts={"excluded_years": [2024]},
-                                )
-                                logged += 1
-                            except Exception as exc:
-                                st.warning(f"[WARNING] MLflow log failed for {model_name} 2025: {exc}")
-
-                        try:
-                            monitor.set_baseline(
-                                metrics={
-                                    "r2": best_2023["res"]["r2"],
-                                    "mae": best_2023["res"]["mae"],
-                                    "rmse": best_2023["res"]["rmse"],
-                                },
-                                model_name=best_2023["name"],
-                                test_year=2023,
-                            )
+                            st.success(f"[OK] Logged {logged} MLflow run(s).")
                         except Exception as exc:
-                            st.warning(f"[WARNING] MLflow baseline set failed: {exc}")
+                            st.warning(f"[WARNING] MLflow logging failed: {exc}")
 
-                        st.success(f"[OK] Logged {logged} MLflow run(s).")
-                    except Exception as exc:
-                        st.warning(f"[WARNING] MLflow logging failed: {exc}")
+                    metadata = {
+                        "model_name": best_2023["name"],
+                        "features": best_2023["valid_features"],
+                        "metrics": {
+                            "r2": best_2023["res"]["r2"],
+                            "mae": best_2023["res"]["mae"],
+                            "rmse": best_2023["res"]["rmse"],
+                        },
+                        "test_year": 2023,
+                        "train_years": best_2023["train_years"],
+                        "num_features": len(best_2023["valid_features"]),
+                    }
 
-                metadata = {
-                    "model_name": best_2023["name"],
-                    "features": best_2023["valid_features"],
-                    "metrics": {
-                        "r2": best_2023["res"]["r2"],
-                        "mae": best_2023["res"]["mae"],
-                        "rmse": best_2023["res"]["rmse"],
-                    },
-                    "test_year": 2023,
-                    "train_years": best_2023["train_years"],
-                    "num_features": len(best_2023["valid_features"]),
-                }
-
-                report_text = build_report_text(
-                    metadata,
-                    df_base,
-                    forecast_vals,
-                    metrics=None,
-                    pipeline_summary={
-                        "best_2023_name": best_2023["name"],
-                        "best_2023_r2": best_2023["res"]["r2"],
-                        "best_2023_mae": best_2023["res"]["mae"],
-                        "best_2025_name": best_2025["name"],
-                        "best_2025_r2": best_2025["res"]["r2"],
-                        "best_2025_mae": best_2025["res"]["mae"],
-                        "forecast_2026": forecast_vals,
-                    },
-                )
+                    report_text = build_report_text(
+                        metadata,
+                        df_base,
+                        forecast_vals,
+                        metrics=None,
+                        pipeline_summary={
+                            "best_2023_name": best_2023["name"],
+                            "best_2023_r2": best_2023["res"]["r2"],
+                            "best_2023_mae": best_2023["res"]["mae"],
+                            "best_2025_name": best_2025["name"],
+                            "best_2025_r2": best_2025["res"]["r2"],
+                            "best_2025_mae": best_2025["res"]["mae"],
+                            "forecast_2026": forecast_vals,
+                        },
+                    )
 
                 st.subheader("Download")
                 st.download_button(

@@ -27,7 +27,7 @@ os.environ['MLFLOW_ENABLE_ARTIFACTS_PROGRESS_BAR'] = 'false'
 import logging
 logging.getLogger('mlflow').setLevel(logging.ERROR)
 
-# Import dashboard generator (make sure drift_dashboard_generator.py is in same folder)
+# Import dashboard generator
 try:
     from src.monitoring.drift_dashboard_generator import DriftDashboardGenerator
     DASHBOARD_AVAILABLE = True
@@ -59,12 +59,13 @@ class ModelMonitor:
             performance_threshold: minimum acceptable r2 score
         """
         self.experiment_name = experiment_name
-        self.tracking_uri = tracking_uri
+        # Allow env var override for local vs cloud usage
+        self.tracking_uri = os.getenv("MLFLOW_TRACKING_URI", tracking_uri)
         self.drift_threshold = drift_threshold
         self.performance_threshold = performance_threshold
         
         # setup mlflow
-        mlflow.set_tracking_uri(tracking_uri)
+        mlflow.set_tracking_uri(self.tracking_uri)
         mlflow.set_experiment(experiment_name)
         
         # baseline metrics storage
@@ -218,14 +219,14 @@ class ModelMonitor:
         else:
             return 'OK'
     
-    def _get_status_emoji(self, severity: str) -> str:
-        """Get emoji for severity level."""
-        return {
-            'CRITICAL': '[ALERT]',
-            'WARNING': '[WARNING]',
-            'OK': '[OK]',
-            'UNKNOWN': '[?]'
-        }.get(severity, '[?]')
+    # def _get_status_emoji(self, severity: str) -> str:
+    #     """Get emoji for severity level."""
+    #     return {
+    #         'CRITICAL': '[ALERT]',
+    #         'WARNING': '[WARNING]',
+    #         'OK': '[OK]',
+    #         'UNKNOWN': '[?]'
+    #     }.get(severity, '[?]')
     
     def detect_performance_drift(
         self,
@@ -316,14 +317,14 @@ class ModelMonitor:
     ) -> None:
         """Print clear, formatted drift summary to console."""
         severity = self._get_drift_severity(current_metrics)
-        emoji = self._get_status_emoji(severity)
+        # emoji = self._get_status_emoji(severity)
         
         baseline = self.baseline_metrics['metrics']
         r2_drop = baseline['r2'] - current_metrics['r2']
         mae_pct = ((current_metrics['mae'] - baseline['mae']) / baseline['mae']) * 100
         
         print("\n" + "=" * 60)
-        print(f"{emoji} DRIFT CHECK RESULT: {severity}")
+        print(f" DRIFT CHECK RESULT: {severity}")
         print("=" * 60)
         print(f"  Test Year:      {test_year}")
         print(f"  Baseline R²:    {baseline['r2']:.4f}")
@@ -365,8 +366,8 @@ class ModelMonitor:
             # =====================================================
             # CLEAR STATUS TAGS (visible in MLflow run list)
             # =====================================================
-            status_emoji = self._get_status_emoji(severity)
-            mlflow.set_tag("DRIFT_STATUS", f"{status_emoji} {'RETRAIN NEEDED' if drift_detected else 'MODEL OK'}")
+            # status_emoji = self._get_status_emoji(severity)
+            mlflow.set_tag("DRIFT_STATUS", f" {'RETRAIN NEEDED' if drift_detected else 'MODEL OK'}")
             mlflow.set_tag("severity", severity)
             mlflow.set_tag("run_type", "drift_check")
             mlflow.set_tag("model_tested", model_name)
@@ -558,11 +559,11 @@ class ModelMonitor:
         )
         
         severity = self._get_drift_severity(current_metrics)
-        emoji = self._get_status_emoji(severity)
+        # emoji = self._get_status_emoji(severity)
         
         report = []
         report.append("\n" + "=" * 80)
-        report.append(f"{emoji} MODEL DRIFT DETECTION REPORT - {severity}")
+        report.append(f" MODEL DRIFT DETECTION REPORT - {severity}")
         report.append("=" * 80)
         report.append(f"\nTimestamp: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append(f"Model: {model_name}")

@@ -12,8 +12,12 @@ env:
   PROJECT_ID: dengue-forecasting-486221
   REGION: europe-west6
   REPO: dengue-repo
-  IMAGE: dengue-forecasting
-  SERVICE: dengue-forecasting
+  IMAGE: dengue-pipeline
+  JOB: dengue-pipeline-job
+  SCHEDULER_JOB: dengue-pipeline-daily
+  TIME_ZONE: Europe/Zurich
+  MLFLOW_TRACKING_URI: https://mlflow-277673542073.europe-west6.run.app
+  SCHEDULER_SA: github-deployer@dengue-forecasting-486221.iam.gserviceaccount.com
 
 jobs:
   build-deploy:
@@ -40,13 +44,51 @@ jobs:
       - name: Push
         run: docker push ${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA}
 
-      - name: Deploy to Cloud Run
-        uses: google-github-actions/deploy-cloudrun@v3
-        with:
-          service: ${{ env.SERVICE }}
-          image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
-          region: ${{ env.REGION }}
-          flags: --allow-unauthenticated
-          env_vars: |
-            MLFLOW_TRACKING_URI=https://mlflow-277673542073.europe-west6.run.app
-            MLFLOW_UI_URL=https://mlflow-277673542073.europe-west6.run.app
+      - name: Deploy Cloud Run Job (pipeline)
+        run: |
+          set -euo pipefail
+          IMAGE_URI="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${IMAGE}:${GITHUB_SHA}"
+
+          if gcloud run jobs describe "${JOB}" --region "${REGION}" >/dev/null 2>&1; then
+            gcloud run jobs update "${JOB}" \
+              --image "${IMAGE_URI}" \
+              --region "${REGION}" \
+              --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
+              --command python \
+              --args -m,src.main
+          else
+            gcloud run jobs create "${JOB}" \
+              --image "${IMAGE_URI}" \
+              --region "${REGION}" \
+              --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
+              --command python \
+              --args -m,src.main
+          fi
+
+      - name: Ensure Cloud Scheduler (daily 08:00 Europe/Zurich)
+        run: |
+          set -euo pipefail
+          URI="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT_ID}/jobs/${JOB}:run"
+
+          if gcloud scheduler jobs describe "${SCHEDULER_JOB}" --location "${REGION}" >/dev/null 2>&1; then
+            gcloud scheduler jobs update http "${SCHEDULER_JOB}" \
+              --location "${REGION}" \
+              --schedule "0 8 * * *" \
+              --time-zone "${TIME_ZONE}" \
+              --uri "${URI}" \
+              --http-method POST \
+              --oauth-service-account-email "${SCHEDULER_SA}"
+          else
+            gcloud scheduler jobs create http "${SCHEDULER_JOB}" \
+              --location "${REGION}" \
+              --schedule "0 8 * * *" \
+              --time-zone "${TIME_ZONE}" \
+              --uri "${URI}" \
+              --http-method POST \
+              --oauth-service-account-email "${SCHEDULER_SA}"
+          fi
+
+      - name: Run pipeline once after deploy
+        run: |
+          set -euo pipefail
+          gcloud run jobs execute "${JOB}" --region "${REGION}"

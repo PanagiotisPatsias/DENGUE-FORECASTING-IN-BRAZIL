@@ -121,7 +121,7 @@ def prepare_training_data_from_uploads(dengue_file, sst_file):
 
 
 def run_full_pipeline(df_base=None):
-    """run the same steps as src/main.py: evaluate 2023, evaluate 2025, forecast 2026."""
+    """run the same steps as src/main.py: evaluate 2023, evaluate 2025, forecast 2026. """
     if df_base is None:
         df_base = load_training_data()
     feature_engineer = FeatureEngineer()

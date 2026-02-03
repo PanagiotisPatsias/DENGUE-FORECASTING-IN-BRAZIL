@@ -359,11 +359,14 @@ def main():
                 if predict_only:
                     # Resolve models directory for cloud (repo root vs Intellishore subdir)
                     candidates = [
-                        Path(__file__).parent / "models",
                         Path.cwd() / "Intellishore" / "models",
+                        Path(__file__).parent / "models",
                         Path.cwd() / "models",
                     ]
-                    models_dir = next((p for p in candidates if p.exists()), candidates[0])
+                    models_dir = next(
+                        (p for p in candidates if (p / "baseline_model.pkl").exists()),
+                        next((p for p in candidates if p.exists()), candidates[0]),
+                    )
                     model_manager = ModelManager(models_dir=str(models_dir))
                     st.caption(f"Using models dir: `{models_dir}`")
                     loaded = model_manager.load_baseline_model()

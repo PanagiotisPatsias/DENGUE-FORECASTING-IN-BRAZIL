@@ -10,6 +10,7 @@ from datetime import datetime
 import sys
 import os
 import io
+import tempfile
 from pathlib import Path
 
 # add src to path
@@ -69,9 +70,11 @@ def load_training_data():
 
 
 def _read_uploaded_csv(uploaded):
-    """read uploaded CSV from UploadedFile or cached bytes."""
+    """read uploaded CSV from UploadedFile, cached bytes, or a file path."""
     if uploaded is None:
         raise ValueError("Missing uploaded file")
+    if isinstance(uploaded, str) and os.path.exists(uploaded):
+        return pd.read_csv(uploaded)
     if isinstance(uploaded, (bytes, bytearray)):
         return pd.read_csv(io.BytesIO(uploaded))
     return pd.read_csv(uploaded)
@@ -267,14 +270,27 @@ def main():
     dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"], key="dengue_file")
     sst_file = st.file_uploader("Upload SST CSV", type=["csv"], key="sst_file")
 
-    # persist uploads across reruns (store bytes to survive cloud reruns)
-    if dengue_file is not None:
-        st.session_state["dengue_file_cached"] = dengue_file.read()
-    if sst_file is not None:
-        st.session_state["sst_file_cached"] = sst_file.read()
+    # persist uploads across reruns (store bytes + temp file for stability)
+    tmp_dir = tempfile.gettempdir()
+    dengue_tmp = os.path.join(tmp_dir, "dengue_upload.csv")
+    sst_tmp = os.path.join(tmp_dir, "sst_upload.csv")
 
-    dengue_file = st.session_state.get("dengue_file_cached")
-    sst_file = st.session_state.get("sst_file_cached")
+    if dengue_file is not None:
+        dengue_bytes = dengue_file.read()
+        st.session_state["dengue_file_cached"] = dengue_bytes
+        with open(dengue_tmp, "wb") as f:
+            f.write(dengue_bytes)
+        st.session_state["dengue_file_path"] = dengue_tmp
+
+    if sst_file is not None:
+        sst_bytes = sst_file.read()
+        st.session_state["sst_file_cached"] = sst_bytes
+        with open(sst_tmp, "wb") as f:
+            f.write(sst_bytes)
+        st.session_state["sst_file_path"] = sst_tmp
+
+    dengue_file = st.session_state.get("dengue_file_cached") or st.session_state.get("dengue_file_path")
+    sst_file = st.session_state.get("sst_file_cached") or st.session_state.get("sst_file_path")
     st.markdown("</div>", unsafe_allow_html=True)
 
     if dengue_file is None or sst_file is None:

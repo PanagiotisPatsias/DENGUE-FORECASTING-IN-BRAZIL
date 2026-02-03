@@ -371,6 +371,13 @@ def main():
                     st.caption(f"Using models dir: `{models_dir}`")
                     loaded = model_manager.load_baseline_model()
                     if not loaded:
+                        st.warning("[DEBUG] Baseline not found. Checked these paths:")
+                        for p in candidates:
+                            if p.exists():
+                                files = sorted([f.name for f in p.glob("*.pkl")] + [f.name for f in p.glob("*.json")])
+                                st.write(f"- `{p}`: {', '.join(files) if files else '(no model files)'}")
+                            else:
+                                st.write(f"- `{p}`: (missing)")
                         st.error("[ERROR] No baseline model found. Train locally to create baseline_model.pkl.")
                         return
                     baseline_model, baseline_meta = loaded

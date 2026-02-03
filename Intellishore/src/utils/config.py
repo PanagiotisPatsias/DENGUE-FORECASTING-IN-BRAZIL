@@ -58,12 +58,6 @@ class Config:
             'n_estimators': [100],
             'learning_rate': [0.1],
             'random_state': [42]
-        },
-        'XGBoost': {
-            'n_estimators': [100],
-            'learning_rate': [0.01, 0.05],
-            'max_depth': [3, 5],
-            'random_state': [42]
         }
     }
     

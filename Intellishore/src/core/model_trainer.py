@@ -13,12 +13,8 @@ from sklearn.ensemble import (
 )
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
-try:
-    from xgboost import XGBRegressor
-    _XGBOOST_AVAILABLE = True
-except Exception:
-    XGBRegressor = None
-    _XGBOOST_AVAILABLE = False
+XGBRegressor = None
+_XGBOOST_AVAILABLE = False
 from ..utils.config import Config
 
 
@@ -51,13 +47,7 @@ class ModelTrainer:
             ),
         }
 
-        if _XGBOOST_AVAILABLE:
-            models['XGBoost'] = XGBRegressor(
-                random_state=42,
-                objective='reg:squarederror'
-            )
-        else:
-            print("[WARNING] XGBoost not available. Skipping XGBoost model.")
+        print("[INFO] XGBoost disabled. Skipping XGBoost model.")
 
         return models
     

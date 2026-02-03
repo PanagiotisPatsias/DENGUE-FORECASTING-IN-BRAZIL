@@ -357,7 +357,15 @@ def main():
                 else:
                     df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
                 if predict_only:
-                    model_manager = ModelManager()
+                    # Resolve models directory for cloud (repo root vs Intellishore subdir)
+                    candidates = [
+                        Path(__file__).parent / "models",
+                        Path.cwd() / "Intellishore" / "models",
+                        Path.cwd() / "models",
+                    ]
+                    models_dir = next((p for p in candidates if p.exists()), candidates[0])
+                    model_manager = ModelManager(models_dir=str(models_dir))
+                    st.caption(f"Using models dir: `{models_dir}`")
                     loaded = model_manager.load_baseline_model()
                     if not loaded:
                         st.error("[ERROR] No baseline model found. Train locally to create baseline_model.pkl.")

@@ -282,35 +282,46 @@ def main():
     st.markdown("</div>", unsafe_allow_html=True)
 
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.subheader("1) Upload Training Files (Dengue + SST)")
-    st.caption("Dengue requires: `data_iniSE`, `casos_est`. SST requires: `YR`, `MON`, `NINO1+2`, `NINO3`, `NINO3.4`, `ANOM.3`.")
-    dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"], key="dengue_file")
-    sst_file = st.file_uploader("Upload SST CSV", type=["csv"], key="sst_file")
+    st.subheader("1) Training Data Source")
+    use_bundled = st.checkbox(
+        "Use bundled training data (recommended for Streamlit Cloud)",
+        value=True,
+        help="Loads data from the repo instead of uploads to avoid session resets.",
+    )
 
-    # persist uploads across reruns (store bytes + temp file for stability)
-    tmp_dir = tempfile.gettempdir()
-    dengue_tmp = os.path.join(tmp_dir, "dengue_upload.csv")
-    sst_tmp = os.path.join(tmp_dir, "sst_upload.csv")
+    if not use_bundled:
+        st.caption("Dengue requires: `data_iniSE`, `casos_est`. SST requires: `YR`, `MON`, `NINO1+2`, `NINO3`, `NINO3.4`, `ANOM.3`.")
+        dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"], key="dengue_file")
+        sst_file = st.file_uploader("Upload SST CSV", type=["csv"], key="sst_file")
 
-    if dengue_file is not None:
-        dengue_bytes = dengue_file.read()
-        st.session_state["dengue_file_cached"] = dengue_bytes
-        with open(dengue_tmp, "wb") as f:
-            f.write(dengue_bytes)
-        st.session_state["dengue_file_path"] = dengue_tmp
+        # persist uploads across reruns (store bytes + temp file for stability)
+        tmp_dir = tempfile.gettempdir()
+        dengue_tmp = os.path.join(tmp_dir, "dengue_upload.csv")
+        sst_tmp = os.path.join(tmp_dir, "sst_upload.csv")
 
-    if sst_file is not None:
-        sst_bytes = sst_file.read()
-        st.session_state["sst_file_cached"] = sst_bytes
-        with open(sst_tmp, "wb") as f:
-            f.write(sst_bytes)
-        st.session_state["sst_file_path"] = sst_tmp
+        if dengue_file is not None:
+            dengue_bytes = dengue_file.read()
+            st.session_state["dengue_file_cached"] = dengue_bytes
+            with open(dengue_tmp, "wb") as f:
+                f.write(dengue_bytes)
+            st.session_state["dengue_file_path"] = dengue_tmp
 
-    dengue_file = st.session_state.get("dengue_file_cached") or st.session_state.get("dengue_file_path")
-    sst_file = st.session_state.get("sst_file_cached") or st.session_state.get("sst_file_path")
+        if sst_file is not None:
+            sst_bytes = sst_file.read()
+            st.session_state["sst_file_cached"] = sst_bytes
+            with open(sst_tmp, "wb") as f:
+                f.write(sst_bytes)
+            st.session_state["sst_file_path"] = sst_tmp
+
+        dengue_file = st.session_state.get("dengue_file_cached") or st.session_state.get("dengue_file_path")
+        sst_file = st.session_state.get("sst_file_cached") or st.session_state.get("sst_file_path")
+    else:
+        dengue_file = None
+        sst_file = None
+        st.caption(f"Using bundled data files: `{Config.DENGUE_DATA_PATH}`, `{Config.SST_DATA_PATH}`.")
     st.markdown("</div>", unsafe_allow_html=True)
 
-    if dengue_file is None or sst_file is None:
+    if not use_bundled and (dengue_file is None or sst_file is None):
         st.info("Upload both training files to proceed.")
         st.stop()
 
@@ -333,7 +344,10 @@ def main():
         with st.spinner("Running training pipeline and generating forecast..."):
             try:
                 apply_fast_grid_settings(fast_mode)
-                df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
+                if use_bundled:
+                    df_base = load_training_data()
+                else:
+                    df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
                 pipeline = run_full_pipeline(df_base=df_base)
 
                 results_2023 = pipeline["results_2023"]

@@ -9,6 +9,7 @@ import numpy as np
 from datetime import datetime
 import sys
 import os
+import io
 from pathlib import Path
 
 # add src to path
@@ -67,13 +68,22 @@ def load_training_data():
     return data_loader.load_and_prepare_data()
 
 
+def _read_uploaded_csv(uploaded):
+    """read uploaded CSV from UploadedFile or cached bytes."""
+    if uploaded is None:
+        raise ValueError("Missing uploaded file")
+    if isinstance(uploaded, (bytes, bytearray)):
+        return pd.read_csv(io.BytesIO(uploaded))
+    return pd.read_csv(uploaded)
+
+
 def prepare_training_data_from_uploads(dengue_file, sst_file):
     """prepare merged quarterly training data from uploaded dengue + SST CSVs."""
     data_loader = DataLoader()
 
     try:
-        dengue_df = pd.read_csv(dengue_file)
-        sst_df = pd.read_csv(sst_file)
+        dengue_df = _read_uploaded_csv(dengue_file)
+        sst_df = _read_uploaded_csv(sst_file)
     except Exception as exc:
         raise ValueError(f"Could not read uploaded files: {exc}") from exc
 
@@ -257,11 +267,11 @@ def main():
     dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"], key="dengue_file")
     sst_file = st.file_uploader("Upload SST CSV", type=["csv"], key="sst_file")
 
-    # persist uploads across reruns (cloud reruns on button click)
+    # persist uploads across reruns (store bytes to survive cloud reruns)
     if dengue_file is not None:
-        st.session_state["dengue_file_cached"] = dengue_file
+        st.session_state["dengue_file_cached"] = dengue_file.read()
     if sst_file is not None:
-        st.session_state["sst_file_cached"] = sst_file
+        st.session_state["sst_file_cached"] = sst_file.read()
 
     dengue_file = st.session_state.get("dengue_file_cached")
     sst_file = st.session_state.get("sst_file_cached")

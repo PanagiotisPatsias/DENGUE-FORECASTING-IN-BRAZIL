@@ -19,6 +19,8 @@ from src.core.feature_engineer import FeatureEngineer
 from src.core.model_trainer import ModelTrainer
 from src.core.forecaster import Forecaster
 from src.utils.model_manager import ModelManager
+from src.monitoring.model_monitor import ModelMonitor
+from src.utils.config import Config
 
 # page configuration
 st.set_page_config(
@@ -160,6 +162,8 @@ def run_full_pipeline(df_base=None):
 
     return {
         "feature_engineer": feature_engineer,
+        "results_2023": results_2023,
+        "results_2025": results_2025,
         "best_2023": {
             "name": best_name_2023,
             "res": best_res_2023,
@@ -259,7 +263,13 @@ def main():
         st.stop()
 
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
-    st.subheader("2) Train + Forecast (Full Pipeline)")
+                st.subheader("2) Train + Forecast (Full Pipeline)")
+
+    log_to_mlflow = st.checkbox(
+        "Log results to MLflow",
+        value=True,
+        help="Uses MLFLOW_TRACKING_URI if set; otherwise logs locally to ./mlruns.",
+    )
 
     if st.button("Run Full Pipeline + Forecast", type="primary"):
         with st.spinner("Running training pipeline and generating forecast..."):
@@ -267,6 +277,8 @@ def main():
                 df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
                 pipeline = run_full_pipeline(df_base=df_base)
 
+                results_2023 = pipeline["results_2023"]
+                results_2025 = pipeline["results_2025"]
                 best_2023 = pipeline["best_2023"]
                 best_2025 = pipeline["best_2025"]
 
@@ -301,6 +313,63 @@ def main():
                     "https://mlflow-277673542073.europe-west6.run.app",
                 )
                 st.link_button("Open MLflow", mlflow_url)
+
+                if log_to_mlflow:
+                    try:
+                        monitor = ModelMonitor(experiment_name="dengue_forecasting")
+
+                        def _params_for(model_name: str):
+                            if model_name == "RandomForest":
+                                return Config.RANDOM_FOREST_PARAMS
+                            if model_name == "GradientBoosting":
+                                return Config.GRADIENT_BOOSTING_PARAMS
+                            if model_name == "AdaBoost":
+                                return Config.ADABOOST_PARAMS
+                            return {}
+
+                        for model_name, model_res in results_2023.items():
+                            monitor.log_training_run(
+                                model=model_res["model"],
+                                model_name=model_name,
+                                params=_params_for(model_name),
+                                metrics={
+                                    "r2": model_res["r2"],
+                                    "mae": model_res["mae"],
+                                    "rmse": model_res["rmse"],
+                                },
+                                features=best_2023["valid_features"],
+                                train_year_range=(2010, 2022),
+                                test_year=2023,
+                            )
+
+                        for model_name, model_res in results_2025.items():
+                            monitor.log_training_run(
+                                model=model_res["model"],
+                                model_name=model_name,
+                                params=_params_for(model_name),
+                                metrics={
+                                    "r2": model_res["r2"],
+                                    "mae": model_res["mae"],
+                                    "rmse": model_res["rmse"],
+                                },
+                                features=best_2025["valid_features"],
+                                train_year_range=(2010, 2024),
+                                test_year=2025,
+                            )
+
+                        monitor.set_baseline(
+                            metrics={
+                                "r2": best_2023["res"]["r2"],
+                                "mae": best_2023["res"]["mae"],
+                                "rmse": best_2023["res"]["rmse"],
+                            },
+                            model_name=best_2023["name"],
+                            test_year=2023,
+                        )
+
+                        st.success("[OK] Logged training runs to MLflow.")
+                    except Exception as exc:
+                        st.warning(f"[WARNING] MLflow logging failed: {exc}")
 
                 metadata = {
                     "model_name": best_2023["name"],

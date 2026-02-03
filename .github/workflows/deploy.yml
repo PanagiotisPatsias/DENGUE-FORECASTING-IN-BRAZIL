@@ -47,3 +47,6 @@ jobs:
           image: ${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO }}/${{ env.IMAGE }}:${{ github.sha }}
           region: ${{ env.REGION }}
           flags: --allow-unauthenticated
+          env_vars: |
+            MLFLOW_TRACKING_URI=https://mlflow-277673542073.europe-west6.run.app
+            MLFLOW_UI_URL=https://mlflow-277673542073.europe-west6.run.app

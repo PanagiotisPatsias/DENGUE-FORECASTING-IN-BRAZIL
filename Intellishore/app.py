@@ -353,11 +353,15 @@ def main():
         uploaded_model = st.file_uploader("Upload baseline_model.pkl", type=["pkl"], key="baseline_model_upload")
         uploaded_meta = st.file_uploader("Upload baseline_metadata.json", type=["json"], key="baseline_meta_upload")
 
-    log_to_mlflow = st.checkbox(
-        "Log results to MLflow",
-        value=True,
-        help="Uses MLFLOW_TRACKING_URI if set; otherwise logs locally to ./mlruns.",
-    )
+    log_to_mlflow = False
+    if not is_cloud:
+        log_to_mlflow = st.checkbox(
+            "Log results to MLflow",
+            value=True,
+            help="Uses MLFLOW_TRACKING_URI if set; otherwise logs locally to ./mlruns.",
+        )
+    else:
+        st.caption("MLflow logging is disabled in cloud mode.")
 
     if st.button("Run Full Pipeline + Forecast", type="primary"):
         with st.spinner("Running training pipeline and generating forecast..."):

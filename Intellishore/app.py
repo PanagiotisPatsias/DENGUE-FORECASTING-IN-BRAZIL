@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 import sys
+import os
 from pathlib import Path
 
 # add src to path
@@ -295,7 +296,11 @@ def main():
                 st.dataframe(forecast_df, use_container_width=True)
 
                 st.subheader("MLflow")
-                st.link_button("Open MLflow", "http://localhost:5000")
+                mlflow_url = os.getenv(
+                    "MLFLOW_UI_URL",
+                    "https://mlflow-277673542073.europe-west6.run.app",
+                )
+                st.link_button("Open MLflow", mlflow_url)
 
                 metadata = {
                     "model_name": best_2023["name"],

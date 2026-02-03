@@ -55,14 +55,16 @@ jobs:
               --region "${REGION}" \
               --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
               --command python \
-              --args -m,src.main
+              --args=-m \
+              --args=src.main
           else
             gcloud run jobs create "${JOB}" \
               --image "${IMAGE_URI}" \
               --region "${REGION}" \
               --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
               --command python \
-              --args -m,src.main
+              --args=-m \
+              --args=src.main
           fi
 
       - name: Ensure Cloud Scheduler (daily 08:00 Europe/Zurich)

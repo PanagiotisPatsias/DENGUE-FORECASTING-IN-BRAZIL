@@ -37,6 +37,35 @@ class Config:
         'learning_rate': 0.1,
         'random_state': 42
     }
+
+    # grid search configuration
+    ENABLE_GRID_SEARCH = True
+    TSCV_SPLITS = 3
+    PARAM_GRIDS: Dict[str, Dict[str, Any]] = {
+        'RandomForest': {
+            'n_estimators': [100, 300],
+            'max_depth': [4, 6],
+            'min_samples_leaf': [2, 4],
+            'random_state': [42]
+        },
+        'GradientBoosting': {
+            'n_estimators': [100, 200],
+            'learning_rate': [0.01, 0.05],
+            'max_depth': [3, 4],
+            'random_state': [42]
+        },
+        'AdaBoost': {
+            'n_estimators': [100],
+            'learning_rate': [0.1],
+            'random_state': [42]
+        },
+        'XGBoost': {
+            'n_estimators': [100],
+            'learning_rate': [0.01, 0.05],
+            'max_depth': [3, 5],
+            'random_state': [42]
+        }
+    }
     
     # feature engineering parameters
     LAG_QUARTERS = [1, 2, 3, 4, 5, 6, 7, 8]

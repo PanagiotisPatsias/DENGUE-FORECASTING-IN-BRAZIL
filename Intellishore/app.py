@@ -310,7 +310,7 @@ def main():
                 st.subheader("MLflow")
                 mlflow_url = os.getenv(
                     "MLFLOW_UI_URL",
-                    "https://mlflow-277673542073.europe-west6.run.app",
+                    "http://localhost:5000",
                 )
                 st.link_button("Open MLflow", mlflow_url)
 
@@ -319,28 +319,32 @@ def main():
                         monitor = ModelMonitor(experiment_name="dengue_forecasting")
                         st.caption(f"MLflow tracking URI: `{monitor.tracking_uri}`")
 
-                        def _params_for(model_name: str):
-                            if model_name == "RandomForest":
-                                return Config.RANDOM_FOREST_PARAMS
-                            if model_name == "GradientBoosting":
-                                return Config.GRADIENT_BOOSTING_PARAMS
-                            if model_name == "AdaBoost":
-                                return Config.ADABOOST_PARAMS
-                            return {}
+                        def _params_for(model_name: str, model_res: dict):
+                            return model_res.get(
+                                "best_params",
+                                Config.RANDOM_FOREST_PARAMS if model_name == "RandomForest"
+                                else Config.GRADIENT_BOOSTING_PARAMS if model_name == "GradientBoosting"
+                                else Config.ADABOOST_PARAMS if model_name == "AdaBoost"
+                                else Config.PARAM_GRIDS.get("XGBoost", {}),
+                            )
 
                         logged = 0
 
                         for model_name, model_res in results_2023.items():
                             try:
+                                metrics = {
+                                    "r2": model_res["r2"],
+                                    "mae": model_res["mae"],
+                                    "rmse": model_res["rmse"],
+                                }
+                                if "val_mae" in model_res:
+                                    metrics["val_mae"] = model_res["val_mae"]
+
                                 monitor.log_training_run(
                                     model=model_res["model"],
                                     model_name=model_name,
-                                    params=_params_for(model_name),
-                                    metrics={
-                                        "r2": model_res["r2"],
-                                        "mae": model_res["mae"],
-                                        "rmse": model_res["rmse"],
-                                    },
+                                    params=_params_for(model_name, model_res),
+                                    metrics=metrics,
                                     features=best_2023["valid_features"],
                                     train_year_range=(2010, 2022),
                                     test_year=2023,
@@ -351,18 +355,23 @@ def main():
 
                         for model_name, model_res in results_2025.items():
                             try:
+                                metrics = {
+                                    "r2": model_res["r2"],
+                                    "mae": model_res["mae"],
+                                    "rmse": model_res["rmse"],
+                                }
+                                if "val_mae" in model_res:
+                                    metrics["val_mae"] = model_res["val_mae"]
+
                                 monitor.log_training_run(
                                     model=model_res["model"],
                                     model_name=model_name,
-                                    params=_params_for(model_name),
-                                    metrics={
-                                        "r2": model_res["r2"],
-                                        "mae": model_res["mae"],
-                                        "rmse": model_res["rmse"],
-                                    },
+                                    params=_params_for(model_name, model_res),
+                                    metrics=metrics,
                                     features=best_2025["valid_features"],
                                     train_year_range=(2010, 2024),
                                     test_year=2025,
+                                    artifacts={"excluded_years": [2024]},
                                 )
                                 logged += 1
                             except Exception as exc:

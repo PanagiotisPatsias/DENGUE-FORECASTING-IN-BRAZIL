@@ -104,17 +104,25 @@ class DengueForecastingPipeline:
         if self.enable_monitoring and self.monitor:
             # log all models
             for model_name, model_res in results.items():
+                metrics = {
+                    'r2': model_res['r2'],
+                    'mae': model_res['mae'],
+                    'rmse': model_res['rmse']
+                }
+                if 'val_mae' in model_res:
+                    metrics['val_mae'] = model_res['val_mae']
+
                 run_id = self.monitor.log_training_run(
                     model=model_res['model'],
                     model_name=model_name,
-                    params=Config.RANDOM_FOREST_PARAMS if model_name == 'RandomForest'
-                           else Config.GRADIENT_BOOSTING_PARAMS if model_name == 'GradientBoosting'
-                           else Config.ADABOOST_PARAMS,
-                    metrics={
-                        'r2': model_res['r2'],
-                        'mae': model_res['mae'],
-                        'rmse': model_res['rmse']
-                    },
+                    params=model_res.get(
+                        'best_params',
+                        Config.RANDOM_FOREST_PARAMS if model_name == 'RandomForest'
+                        else Config.GRADIENT_BOOSTING_PARAMS if model_name == 'GradientBoosting'
+                        else Config.ADABOOST_PARAMS if model_name == 'AdaBoost'
+                        else Config.PARAM_GRIDS.get('XGBoost', {})
+                    ),
+                    metrics=metrics,
                     features=valid_features,
                     train_year_range=(2010, test_year - 1),
                     test_year=test_year
@@ -204,17 +212,25 @@ class DengueForecastingPipeline:
         if self.enable_monitoring and self.monitor:
             # log all models
             for model_name, model_res in results.items():
+                metrics = {
+                    'r2': model_res['r2'],
+                    'mae': model_res['mae'],
+                    'rmse': model_res['rmse']
+                }
+                if 'val_mae' in model_res:
+                    metrics['val_mae'] = model_res['val_mae']
+
                 run_id = self.monitor.log_training_run(
                     model=model_res['model'],
                     model_name=model_name,
-                    params=Config.RANDOM_FOREST_PARAMS if model_name == 'RandomForest'
-                           else Config.GRADIENT_BOOSTING_PARAMS if model_name == 'GradientBoosting'
-                           else Config.ADABOOST_PARAMS,
-                    metrics={
-                        'r2': model_res['r2'],
-                        'mae': model_res['mae'],
-                        'rmse': model_res['rmse']
-                    },
+                    params=model_res.get(
+                        'best_params',
+                        Config.RANDOM_FOREST_PARAMS if model_name == 'RandomForest'
+                        else Config.GRADIENT_BOOSTING_PARAMS if model_name == 'GradientBoosting'
+                        else Config.ADABOOST_PARAMS if model_name == 'AdaBoost'
+                        else Config.PARAM_GRIDS.get('XGBoost', {})
+                    ),
+                    metrics=metrics,
                     features=valid_features,
                     train_year_range=(2010, test_year - 1),
                     test_year=test_year,

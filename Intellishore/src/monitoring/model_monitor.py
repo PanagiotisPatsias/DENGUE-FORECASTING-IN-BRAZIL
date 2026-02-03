@@ -602,7 +602,7 @@ class ModelMonitor:
         report.append("-" * 80)
         
         if perf_drift:
-            report.append(f"\n{emoji} DRIFT DETECTED - {severity}")
+            report.append(f"\n DRIFT DETECTED - {severity}")
             report.append("\nDrift Reasons:")
             for i, reason in enumerate(perf_reasons, 1):
                 report.append(f"  {i}. {reason}")

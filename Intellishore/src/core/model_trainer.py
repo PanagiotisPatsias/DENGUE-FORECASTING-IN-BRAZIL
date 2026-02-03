@@ -12,6 +12,13 @@ from sklearn.ensemble import (
     AdaBoostRegressor
 )
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from sklearn.model_selection import TimeSeriesSplit, GridSearchCV
+try:
+    from xgboost import XGBRegressor
+    _XGBOOST_AVAILABLE = True
+except Exception:
+    XGBRegressor = None
+    _XGBOOST_AVAILABLE = False
 from ..utils.config import Config
 
 
@@ -32,7 +39,7 @@ class ModelTrainer:
         returns:
             dictionary of model name to model instance
         """
-        return {
+        models = {
             'GradientBoosting': GradientBoostingRegressor(
                 **Config.GRADIENT_BOOSTING_PARAMS
             ),
@@ -43,6 +50,16 @@ class ModelTrainer:
                 **Config.ADABOOST_PARAMS
             ),
         }
+
+        if _XGBOOST_AVAILABLE:
+            models['XGBoost'] = XGBRegressor(
+                random_state=42,
+                objective='reg:squarederror'
+            )
+        else:
+            print("[WARNING] XGBoost not available. Skipping XGBoost model.")
+
+        return models
     
     def prepare_training_data(
         self,
@@ -199,8 +216,24 @@ class ModelTrainer:
         # train and evaluate all models
         results = {}
         for name, model in self.models.items():
-            trained_model = self.train_model(model, X_train, y_train)
-            results[name] = self.evaluate_model(trained_model, X_test, y_test)
+            if Config.ENABLE_GRID_SEARCH and name in Config.PARAM_GRIDS:
+                tscv = TimeSeriesSplit(n_splits=Config.TSCV_SPLITS)
+                grid_search = GridSearchCV(
+                    estimator=model,
+                    param_grid=Config.PARAM_GRIDS[name],
+                    cv=tscv,
+                    scoring='neg_mean_absolute_error',
+                    n_jobs=-1
+                )
+                grid_search.fit(X_train, y_train)
+                best_model = grid_search.best_estimator_
+                evaluation = self.evaluate_model(best_model, X_test, y_test)
+                evaluation['val_mae'] = -grid_search.best_score_
+                evaluation['best_params'] = grid_search.best_params_
+                results[name] = evaluation
+            else:
+                trained_model = self.train_model(model, X_train, y_train)
+                results[name] = self.evaluate_model(trained_model, X_test, y_test)
         
         return results, y_test, test_df, valid_features, X_train
     

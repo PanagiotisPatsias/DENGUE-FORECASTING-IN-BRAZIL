@@ -256,6 +256,11 @@ def build_report_text(metadata, df_in, predictions, metrics=None, pipeline_summa
 
 def apply_fast_grid_settings(enable: bool) -> None:
     """Shrink grid + CV splits for faster cloud runs."""
+    # always restore defaults before applying any trimming
+    Config.ENABLE_GRID_SEARCH = Config.DEFAULT_ENABLE_GRID_SEARCH
+    Config.TSCV_SPLITS = Config.DEFAULT_TSCV_SPLITS
+    Config.PARAM_GRIDS = {k: v.copy() for k, v in Config.DEFAULT_PARAM_GRIDS.items()}
+
     if not enable:
         return
     Config.TSCV_SPLITS = 2
@@ -328,19 +333,25 @@ def main():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.subheader("2) Train + Forecast (Full Pipeline)")
 
-    fast_mode = st.checkbox(
-        "Fast mode for cloud (smaller grid + 2 CV splits)",
-        value=True,
-        help="Reduces grid search size so Streamlit Cloud doesn't restart the session.",
-    )
+    is_cloud = os.getenv("CLOUD_MODE", "").lower() in ("1", "true", "yes")
+    is_cloud = is_cloud or os.getenv("STREAMLIT_CLOUD", "").lower() in ("1", "true", "yes")
 
     predict_only = False
     if use_bundled:
         predict_only = st.checkbox(
             "Predict-only mode (use saved baseline model)",
-            value=True,
+            value=True if is_cloud else False,
             help="Skips training/validation in the cloud and only runs the forecast.",
         )
+    if is_cloud:
+        predict_only = True
+
+    uploaded_model = None
+    uploaded_meta = None
+    if predict_only:
+        st.caption("Optional: upload baseline model files (baseline_model.pkl + baseline_metadata.json).")
+        uploaded_model = st.file_uploader("Upload baseline_model.pkl", type=["pkl"], key="baseline_model_upload")
+        uploaded_meta = st.file_uploader("Upload baseline_metadata.json", type=["json"], key="baseline_meta_upload")
 
     log_to_mlflow = st.checkbox(
         "Log results to MLflow",
@@ -351,24 +362,47 @@ def main():
     if st.button("Run Full Pipeline + Forecast", type="primary"):
         with st.spinner("Running training pipeline and generating forecast..."):
             try:
-                apply_fast_grid_settings(fast_mode)
+                apply_fast_grid_settings(enable=False)
                 if use_bundled:
                     df_base = load_training_data()
                 else:
                     df_base = prepare_training_data_from_uploads(dengue_file, sst_file)
                 if predict_only:
                     # Resolve models directory for cloud (repo root vs Intellishore subdir)
+                    temp_models_dir = None
+                    if uploaded_model is not None:
+                        temp_models_dir = Path(tempfile.mkdtemp(prefix="uploaded_models_"))
+                        model_path = temp_models_dir / "baseline_model.pkl"
+                        with open(model_path, "wb") as f:
+                            f.write(uploaded_model.read())
+                        if uploaded_meta is not None:
+                            meta_path = temp_models_dir / "baseline_metadata.json"
+                            with open(meta_path, "wb") as f:
+                                f.write(uploaded_meta.read())
+
                     candidates = [
+                        temp_models_dir,
                         Path.cwd() / "Intellishore" / "models",
                         Path(__file__).parent / "models",
                         Path.cwd() / "models",
                     ]
+                    candidates = [p for p in candidates if p is not None]
                     models_dir = next(
                         (p for p in candidates if (p / "baseline_model.pkl").exists()),
                         next((p for p in candidates if p.exists()), candidates[0]),
                     )
                     model_manager = ModelManager(models_dir=str(models_dir))
                     st.caption(f"Using models dir: `{models_dir}`")
+                    # Debug listing for cloud visibility
+                    if is_cloud:
+                        try:
+                            if models_dir.exists():
+                                files = sorted([f.name for f in models_dir.iterdir() if f.is_file()])
+                                st.write(f"[DEBUG] Files in models dir: {', '.join(files) if files else '(empty)'}")
+                            else:
+                                st.write(f"[DEBUG] Models dir missing: `{models_dir}`")
+                        except Exception as exc:
+                            st.write(f"[DEBUG] Could not list models dir: {exc}")
                     loaded = model_manager.load_baseline_model()
                     if not loaded:
                         st.warning("[DEBUG] Baseline not found. Checked these paths:")
@@ -432,6 +466,21 @@ def main():
                             "forecast_2026": forecast_vals,
                         },
                     )
+
+                    if log_to_mlflow:
+                        try:
+                            monitor = ModelMonitor(experiment_name="dengue_forecasting")
+                            st.caption(f"MLflow tracking URI: `{monitor.tracking_uri}`")
+                            monitor.log_forecast_run(
+                                model_name=metadata["model_name"],
+                                forecast_df=forecast_df,
+                                report_text=report_text,
+                                params={"predict_only": True},
+                                metrics=metadata.get("metrics", {}),
+                            )
+                            st.success("[OK] Logged forecast run to MLflow.")
+                        except Exception as exc:
+                            st.warning(f"[WARNING] MLflow logging failed: {exc}")
                 else:
                     pipeline = run_full_pipeline(df_base=df_base)
 

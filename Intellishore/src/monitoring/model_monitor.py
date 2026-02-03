@@ -60,7 +60,8 @@ class ModelMonitor:
         """
         self.experiment_name = experiment_name
         # Allow env var override for local vs cloud usage
-        self.tracking_uri = os.getenv("MLFLOW_TRACKING_URI", tracking_uri)
+        raw_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", tracking_uri)
+        self.tracking_uri = self._normalize_tracking_uri(raw_tracking_uri)
         self.drift_threshold = drift_threshold
         self.performance_threshold = performance_threshold
         
@@ -81,6 +82,21 @@ class ModelMonitor:
             self.dashboard_generator = DriftDashboardGenerator()
         else:
             self.dashboard_generator = None
+
+    @staticmethod
+    def _normalize_tracking_uri(tracking_uri: str) -> str:
+        """Normalize tracking URI for local usage (prefer absolute file://)."""
+        if not tracking_uri:
+            return "./mlruns"
+        if "://" in tracking_uri:
+            return tracking_uri
+        # treat as local path
+        abs_path = Path(tracking_uri).expanduser().resolve()
+        return f"file://{abs_path.as_posix()}"
+
+    def _supports_model_registry(self) -> bool:
+        """Return True if tracking URI supports model registry."""
+        return not self.tracking_uri.startswith("file:")
     
     def log_training_run(
         self,
@@ -118,20 +134,26 @@ class ModelMonitor:
             mlflow.log_param("num_features", len(features))
             
             # log model hyperparameters
-            for param_name, param_value in params.items():
+            for param_name, param_value in (params or {}).items():
                 mlflow.log_param(f"model_{param_name}", param_value)
             
             # log metrics
-            for metric_name, metric_value in metrics.items():
+            for metric_name, metric_value in (metrics or {}).items():
+                if metric_value is None:
+                    continue
+                if isinstance(metric_value, (int, float, np.floating)):
+                    if not np.isfinite(metric_value):
+                        continue
                 mlflow.log_metric(metric_name, metric_value)
             
             # log model
-            mlflow.sklearn.log_model(
-                model,
-                artifact_path="model",
-                registered_model_name=f"{model_name}_dengue_forecaster",
-                pip_requirements=None
-            )
+            log_kwargs = {
+                "artifact_path": "model",
+                "pip_requirements": None,
+            }
+            if self._supports_model_registry():
+                log_kwargs["registered_model_name"] = f"{model_name}_dengue_forecaster"
+            mlflow.sklearn.log_model(model, **log_kwargs)
             
             # log feature importance if available
             if hasattr(model, 'feature_importances_'):
@@ -164,6 +186,53 @@ class ModelMonitor:
             # log timestamp
             mlflow.log_param("logged_at", datetime.now().isoformat())
             
+            return run.info.run_id
+
+    def log_forecast_run(
+        self,
+        model_name: str,
+        forecast_df: pd.DataFrame,
+        report_text: str,
+        params: Optional[Dict[str, Any]] = None,
+        metrics: Optional[Dict[str, float]] = None,
+        artifacts: Optional[Dict[str, Any]] = None
+    ) -> str:
+        """Log a lightweight forecast-only run to MLflow."""
+        with mlflow.start_run(run_name=f"forecast_{model_name}") as run:
+            mlflow.log_param("run_type", "forecast_only")
+            mlflow.log_param("model_name", model_name)
+            for param_name, param_value in (params or {}).items():
+                if param_value is None:
+                    continue
+                mlflow.log_param(param_name, param_value)
+            for metric_name, metric_value in (metrics or {}).items():
+                if metric_value is None:
+                    continue
+                if isinstance(metric_value, (int, float, np.floating)):
+                    if not np.isfinite(metric_value):
+                        continue
+                mlflow.log_metric(metric_name, metric_value)
+
+            forecast_path = "forecast_2026.csv"
+            forecast_df.to_csv(forecast_path, index=False)
+            mlflow.log_artifact(forecast_path)
+            Path(forecast_path).unlink()
+
+            report_path = "prediction_report.txt"
+            with open(report_path, "w") as f:
+                f.write(report_text)
+            mlflow.log_artifact(report_path)
+            Path(report_path).unlink()
+
+            if artifacts:
+                for artifact_name, artifact_data in artifacts.items():
+                    artifact_path = f"{artifact_name}.json"
+                    with open(artifact_path, "w") as f:
+                        json.dump(artifact_data, f)
+                    mlflow.log_artifact(artifact_path)
+                    Path(artifact_path).unlink()
+
+            mlflow.log_param("logged_at", datetime.now().isoformat())
             return run.info.run_id
     
     def set_baseline(

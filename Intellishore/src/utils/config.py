@@ -4,6 +4,7 @@ contains model parameters, file paths, and constants.
 """
 
 import os
+import copy
 from typing import Dict, Any
 
 
@@ -60,6 +61,9 @@ class Config:
             'random_state': [42]
         }
     }
+    DEFAULT_ENABLE_GRID_SEARCH = ENABLE_GRID_SEARCH
+    DEFAULT_TSCV_SPLITS = TSCV_SPLITS
+    DEFAULT_PARAM_GRIDS = copy.deepcopy(PARAM_GRIDS)
     
     # feature engineering parameters
     LAG_QUARTERS = [1, 2, 3, 4, 5, 6, 7, 8]

@@ -317,6 +317,7 @@ def main():
                 if log_to_mlflow:
                     try:
                         monitor = ModelMonitor(experiment_name="dengue_forecasting")
+                        st.caption(f"MLflow tracking URI: `{monitor.tracking_uri}`")
 
                         def _params_for(model_name: str):
                             if model_name == "RandomForest":
@@ -327,47 +328,60 @@ def main():
                                 return Config.ADABOOST_PARAMS
                             return {}
 
+                        logged = 0
+
                         for model_name, model_res in results_2023.items():
-                            monitor.log_training_run(
-                                model=model_res["model"],
-                                model_name=model_name,
-                                params=_params_for(model_name),
-                                metrics={
-                                    "r2": model_res["r2"],
-                                    "mae": model_res["mae"],
-                                    "rmse": model_res["rmse"],
-                                },
-                                features=best_2023["valid_features"],
-                                train_year_range=(2010, 2022),
-                                test_year=2023,
-                            )
+                            try:
+                                monitor.log_training_run(
+                                    model=model_res["model"],
+                                    model_name=model_name,
+                                    params=_params_for(model_name),
+                                    metrics={
+                                        "r2": model_res["r2"],
+                                        "mae": model_res["mae"],
+                                        "rmse": model_res["rmse"],
+                                    },
+                                    features=best_2023["valid_features"],
+                                    train_year_range=(2010, 2022),
+                                    test_year=2023,
+                                )
+                                logged += 1
+                            except Exception as exc:
+                                st.warning(f"[WARNING] MLflow log failed for {model_name} 2023: {exc}")
 
                         for model_name, model_res in results_2025.items():
-                            monitor.log_training_run(
-                                model=model_res["model"],
-                                model_name=model_name,
-                                params=_params_for(model_name),
+                            try:
+                                monitor.log_training_run(
+                                    model=model_res["model"],
+                                    model_name=model_name,
+                                    params=_params_for(model_name),
+                                    metrics={
+                                        "r2": model_res["r2"],
+                                        "mae": model_res["mae"],
+                                        "rmse": model_res["rmse"],
+                                    },
+                                    features=best_2025["valid_features"],
+                                    train_year_range=(2010, 2024),
+                                    test_year=2025,
+                                )
+                                logged += 1
+                            except Exception as exc:
+                                st.warning(f"[WARNING] MLflow log failed for {model_name} 2025: {exc}")
+
+                        try:
+                            monitor.set_baseline(
                                 metrics={
-                                    "r2": model_res["r2"],
-                                    "mae": model_res["mae"],
-                                    "rmse": model_res["rmse"],
+                                    "r2": best_2023["res"]["r2"],
+                                    "mae": best_2023["res"]["mae"],
+                                    "rmse": best_2023["res"]["rmse"],
                                 },
-                                features=best_2025["valid_features"],
-                                train_year_range=(2010, 2024),
-                                test_year=2025,
+                                model_name=best_2023["name"],
+                                test_year=2023,
                             )
+                        except Exception as exc:
+                            st.warning(f"[WARNING] MLflow baseline set failed: {exc}")
 
-                        monitor.set_baseline(
-                            metrics={
-                                "r2": best_2023["res"]["r2"],
-                                "mae": best_2023["res"]["mae"],
-                                "rmse": best_2023["res"]["rmse"],
-                            },
-                            model_name=best_2023["name"],
-                            test_year=2023,
-                        )
-
-                        st.success("[OK] Logged training runs to MLflow.")
+                        st.success(f"[OK] Logged {logged} MLflow run(s).")
                     except Exception as exc:
                         st.warning(f"[WARNING] MLflow logging failed: {exc}")
 

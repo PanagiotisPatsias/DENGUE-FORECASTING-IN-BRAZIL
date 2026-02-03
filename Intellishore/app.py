@@ -254,8 +254,17 @@ def main():
     st.markdown("<div class='panel'>", unsafe_allow_html=True)
     st.subheader("1) Upload Training Files (Dengue + SST)")
     st.caption("Dengue requires: `data_iniSE`, `casos_est`. SST requires: `YR`, `MON`, `NINO1+2`, `NINO3`, `NINO3.4`, `ANOM.3`.")
-    dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"])
-    sst_file = st.file_uploader("Upload SST CSV", type=["csv"])
+    dengue_file = st.file_uploader("Upload Dengue CSV", type=["csv"], key="dengue_file")
+    sst_file = st.file_uploader("Upload SST CSV", type=["csv"], key="sst_file")
+
+    # persist uploads across reruns (cloud reruns on button click)
+    if dengue_file is not None:
+        st.session_state["dengue_file_cached"] = dengue_file
+    if sst_file is not None:
+        st.session_state["sst_file_cached"] = sst_file
+
+    dengue_file = st.session_state.get("dengue_file_cached")
+    sst_file = st.session_state.get("sst_file_cached")
     st.markdown("</div>", unsafe_allow_html=True)
 
     if dengue_file is None or sst_file is None:

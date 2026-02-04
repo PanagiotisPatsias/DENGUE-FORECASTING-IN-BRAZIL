@@ -56,6 +56,7 @@ jobs:
             gcloud run jobs update "${JOB}" \
               --image "${IMAGE_URI}" \
               --region "${REGION}" \
+              --memory 4Gi \
               --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
               --command python \
               --args=-m \
@@ -64,6 +65,7 @@ jobs:
             gcloud run jobs create "${JOB}" \
               --image "${IMAGE_URI}" \
               --region "${REGION}" \
+              --memory 4Gi \
               --set-env-vars "MLFLOW_TRACKING_URI=${MLFLOW_TRACKING_URI}" \
               --command python \
               --args=-m \
